@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
+
+    <changeSet id="1" author="on-class-admin">
+        <createTable tableName="capacity">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="VARCHAR(90)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="capacity_technology">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="capacity_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="technology_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="capacity_technology"
+                                 baseColumnNames="capacity_id"
+                                 constraintName="fk_capacity_technology_capacity"
+                                 referencedTableName="capacity"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+
+        <addUniqueConstraint tableName="capacity_technology"
+                             columnNames="capacity_id, technology_id"
+                             constraintName="uq_capacity_technology"/>
+    </changeSet>
+
+</databaseChangeLog>

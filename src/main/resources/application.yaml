@@ -1,0 +1,39 @@
+server:
+  port: 9098
+
+spring:
+  application:
+    name: on-class-capacities
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5434/on-class-capacities-db
+    username: postgres
+    password: password
+
+  liquibase:
+    url: jdbc:postgresql://localhost:5434/on-class-capacities-db
+    user: postgres
+    password: password
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+  webflux:
+    base-path: /on-class
+
+microservices:
+  technology:
+    url: http://localhost:9099/on-class
+
+resilience4j:
+  retry:
+    instances:
+      technologyService:
+        max-attempts: 3
+        wait-duration: 2s
+  circuitbreaker:
+    instances:
+      technologyService:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
