@@ -1,7 +1,9 @@
 package com.training.on_class.infrastructure.adapters.external.adapter;
 
 import com.training.on_class.domain.exceptions.BusinessException;
+import com.training.on_class.domain.model.Technology;
 import com.training.on_class.domain.ports.outbound.ITechnologyServicePort;
+import com.training.on_class.infrastructure.adapters.external.dto.TechnologyDto;
 import com.training.on_class.infrastructure.entrypoints.rest.dto.response.SuccessResponse;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
@@ -67,5 +69,37 @@ public class TechnologyExternalAdapter implements ITechnologyServicePort {
         }
 
         return Mono.error(new BusinessException("El servicio de validación de tecnologías no está disponible en este momento. Intente más tarde."));
+    }
+
+    @Override
+    public Mono<List<Technology>> getTechnologiesByIds(List<Long> technologyIds) {
+        if (technologyIds == null || technologyIds.isEmpty()) {
+            return Mono.just(List.of());
+        }
+
+        String idsParam = technologyIds.stream()
+          .map(String::valueOf)
+          .collect(Collectors.joining(","));
+
+        log.info("Llamando al MS de Tecnologías para OBTENER datos de los IDs: {}", idsParam);
+
+        return technologyWebClient.get()
+          .uri(uriBuilder -> uriBuilder
+            .path("/api/v1/technologies/search")
+            .queryParam("ids", idsParam)
+            .build())
+          .retrieve()
+          .bodyToMono(new ParameterizedTypeReference<SuccessResponse<List<TechnologyDto>>>() {})
+          .map(SuccessResponse::getData)
+          .map(dtos -> dtos.stream()
+            .map(dto -> new Technology(dto.getId(), dto.getName()))
+            .toList())
+          .transformDeferred(RetryOperator.of(retry))
+          .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+          .onErrorResume(ex -> handleFetchFailedResponse(idsParam, ex));
+    }
+
+    private Mono<List<Technology>> handleFetchFailedResponse(String idsParam, Throwable ex) {
+        return Mono.error(new BusinessException("Error al obtener la información de las tecnologías asociadas."));
     }
 }

@@ -4,6 +4,7 @@ import com.training.on_class.domain.ports.inbound.ICapacityServicePort;
 import com.training.on_class.infrastructure.entrypoints.rest.dto.request.CapacityRequest;
 import com.training.on_class.infrastructure.entrypoints.rest.dto.response.CapacityResponse;
 import com.training.on_class.infrastructure.entrypoints.rest.dto.response.ErrorResponse;
+import com.training.on_class.infrastructure.entrypoints.rest.dto.response.PaginationResponse;
 import com.training.on_class.infrastructure.entrypoints.rest.dto.response.SuccessResponse;
 import com.training.on_class.infrastructure.entrypoints.rest.mapper.ICapacityRestMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,5 +50,19 @@ public class CapacityController {
           .flatMap(capacityServicePort::saveCapacity)
           .map(mapper::toResponse)
           .map(dto -> new SuccessResponse<>("Capacidad creada exitosamente", dto));
+    }
+
+    @Operation(summary = "Listar capacidades paginadas",
+      description = "Devuelve un listado paginado de capacidades. Permite ordenar por 'name' o 'technologyCount' de forma 'asc' o 'desc'.")
+    @GetMapping
+    public Mono<SuccessResponse<PaginationResponse<CapacityResponse>>> getAllCapacities(
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "10") int size,
+      @RequestParam(defaultValue = "name") String sortBy,
+      @RequestParam(defaultValue = "asc") String sortDirection) {
+
+        return capacityServicePort.getAllCapacities(page, size, sortBy, sortDirection)
+          .map(mapper::toPaginatedResponse)
+          .map(paginatedDto -> new SuccessResponse<>("Capacidades obtenidas exitosamente", paginatedDto));
     }
 }
