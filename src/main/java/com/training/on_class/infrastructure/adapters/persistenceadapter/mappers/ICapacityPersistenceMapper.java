@@ -11,5 +11,15 @@ public interface ICapacityPersistenceMapper {
 
     CapacityEntity toEntity(Capacity capacity);
 
-    Capacity toDomain(CapacityEntity entity, List<Long> technologyIds);
+    default Capacity toDomain(CapacityEntity entity, List<Long> technologyIds) {
+        if (entity == null) {
+            return null;
+        }
+        return new Capacity(
+          entity.getId(),
+          entity.getName(),
+          entity.getDescription(),
+          technologyIds
+        );
+    }
 }
