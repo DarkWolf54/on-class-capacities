@@ -2,9 +2,13 @@ package com.training.on_class.infrastructure.entrypoints.rest.controller;
 
 import com.training.on_class.domain.exceptions.BusinessException;
 import com.training.on_class.domain.model.Capacity;
+import com.training.on_class.domain.model.PaginatedList;
+import com.training.on_class.domain.model.Technology;
 import com.training.on_class.domain.ports.inbound.ICapacityServicePort;
 import com.training.on_class.infrastructure.entrypoints.rest.dto.request.CapacityRequest;
 import com.training.on_class.infrastructure.entrypoints.rest.dto.response.CapacityResponse;
+import com.training.on_class.infrastructure.entrypoints.rest.dto.response.PaginationResponse;
+import com.training.on_class.infrastructure.entrypoints.rest.dto.response.TechnologyResponse;
 import com.training.on_class.infrastructure.entrypoints.rest.exception.GlobalExceptionHandler;
 import com.training.on_class.infrastructure.entrypoints.rest.mapper.ICapacityRestMapper;
 import com.training.on_class.infrastructure.entrypoints.rest.security.SecurityConfig;
@@ -19,6 +23,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -48,8 +53,7 @@ class CapacityControllerTest {
 
         Capacity mappedCapacity = new Capacity(null, "Backend Developer", "Capacidad para crear APIs", Arrays.asList(1L, 2L, 3L));
         Capacity savedCapacity = new Capacity(1L, "Backend Developer", "Capacidad para crear APIs", Arrays.asList(1L, 2L, 3L));
-        CapacityResponse responseDto = new CapacityResponse(1L, "Backend Developer", "Capacidad para crear APIs", Arrays.asList(1L, 2L, 3L));
-
+        CapacityResponse responseDto = new CapacityResponse(1L, "Backend Developer", "Capacidad para crear APIs", Arrays.asList(1L, 2L, 3L), null);
         when(mapper.toDomain(any(CapacityRequest.class)))
           .thenReturn(mappedCapacity);
 
@@ -152,5 +156,82 @@ class CapacityControllerTest {
 
         verify(mapper, never()).toDomain(any());
         verify(capacityServicePort, never()).saveCapacity(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void getAllCapacities_Success_WithDefaultParams() {
+        // Arrange
+        Technology tech1 = new Technology(1L, "Java");
+        Technology tech2 = new Technology(2L, "Spring");
+
+        Capacity capacityDomain = new Capacity(1L, "Backend", "Desc", Arrays.asList(tech1, tech2), true);
+        PaginatedList<Capacity> paginatedDomainList = new PaginatedList<>(List.of(capacityDomain), 0, 10, 1, 1);
+
+        TechnologyResponse techResp1 = new TechnologyResponse(1L, "Java");
+        TechnologyResponse techResp2 = new TechnologyResponse(2L, "Spring");
+
+        CapacityResponse capacityResponse = new CapacityResponse(1L, "Backend", "Desc", null, Arrays.asList(techResp1, techResp2));
+        PaginationResponse<CapacityResponse> paginationResponse = new PaginationResponse<>(List.of(capacityResponse), 0, 10, 1, 1);
+
+        when(capacityServicePort.getAllCapacities(0, 10, "name", "asc"))
+          .thenReturn(Mono.just(paginatedDomainList));
+
+        when(mapper.toPaginatedResponse(any())).thenReturn(paginationResponse);
+
+        // Act & Assert
+        webTestClient.get()
+          .uri("/api/v1/capacities")
+          .exchange()
+          .expectStatus().isOk() // 200 OK
+          .expectBody()
+          .jsonPath("$.message").isEqualTo("Capacidades obtenidas exitosamente")
+          .jsonPath("$.data.page").isEqualTo(0)
+          .jsonPath("$.data.totalElements").isEqualTo(1)
+          .jsonPath("$.data.data[0].name").isEqualTo("Backend")
+          .jsonPath("$.data.data[0].technologies[0].name").isEqualTo("Java");
+
+        verify(capacityServicePort, times(1)).getAllCapacities(0, 10, "name", "asc");
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void getAllCapacities_Success_WithCustomParams() {
+        // Arrange
+        PaginatedList<Capacity> paginatedDomainList = new PaginatedList<>(List.of(), 1, 5, 0, 0);
+        PaginationResponse<CapacityResponse> paginationResponse = new PaginationResponse<>(List.of(), 1, 5, 0, 0);
+
+        when(capacityServicePort.getAllCapacities(1, 5, "technologyCount", "desc"))
+          .thenReturn(Mono.just(paginatedDomainList));
+        when(mapper.toPaginatedResponse(any())).thenReturn(paginationResponse);
+
+        // Act & Assert
+        webTestClient.get()
+          .uri(uriBuilder -> uriBuilder
+            .path("/api/v1/capacities")
+            .queryParam("page", "1")
+            .queryParam("size", "5")
+            .queryParam("sortBy", "technologyCount")
+            .queryParam("sortDirection", "desc")
+            .build())
+          .exchange()
+          .expectStatus().isOk()
+          .expectBody()
+          .jsonPath("$.data.page").isEqualTo(1)
+          .jsonPath("$.data.size").isEqualTo(5);
+
+        verify(capacityServicePort, times(1)).getAllCapacities(1, 5, "technologyCount", "desc");
+    }
+
+    @Test
+    @WithMockUser(roles = "PERSONA")
+    void getAllCapacities_Returns403_WhenUserIsNotAdmin() {
+        // Act & Assert
+        webTestClient.get()
+          .uri("/api/v1/capacities")
+          .exchange()
+          .expectStatus().isForbidden();
+
+        verify(capacityServicePort, never()).getAllCapacities(anyInt(), anyInt(), anyString(), anyString());
     }
 }

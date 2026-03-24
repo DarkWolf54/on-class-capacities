@@ -9,11 +9,9 @@ import com.training.on_class.infrastructure.adapters.persistenceadapter.mappers.
 import com.training.on_class.infrastructure.adapters.persistenceadapter.repositories.ICapacityRepository;
 import com.training.on_class.infrastructure.adapters.persistenceadapter.repositories.ICapacityTechnologyRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Component
@@ -23,7 +21,6 @@ public class CapacityPersistenceAdapter implements ICapacityPersistencePort {
     private final ICapacityRepository capacityRepository;
     private final ICapacityTechnologyRepository capacityTechnologyRepository;
     private final ICapacityPersistenceMapper mapper;
-    private final DatabaseClient databaseClient;
 
     @Override
     public Mono<Capacity> saveCapacity(Capacity capacity) {
@@ -49,29 +46,12 @@ public class CapacityPersistenceAdapter implements ICapacityPersistencePort {
 
         Mono<Long> totalElementsMono = capacityRepository.countAllCapacities().defaultIfEmpty(0L);
 
-        String query = String.format(
-          "SELECT c.id, c.name, c.description, COUNT(ct.technology_id) as tech_count, " +
-            "ARRAY_AGG(ct.technology_id) as tech_ids " +
-            "FROM capacity c " +
-            "LEFT JOIN capacity_technology ct ON c.id = ct.capacity_id " +
-            "GROUP BY c.id, c.name, c.description " +
-            "ORDER BY %s %s LIMIT %d OFFSET %d",
-          dbSortColumn, dbSortDirection, size, offset
-        );
-
-        Mono<List<Capacity>> dataMono = databaseClient.sql(query)
-          .map(row -> {
-              Long id = row.get("id", Long.class);
-              String name = row.get("name", String.class);
-              String description = row.get("description", String.class);
-
-              Long[] techIdsArray = row.get("tech_ids", Long[].class);
-              List<Long> techIds = techIdsArray != null ? Arrays.asList(techIdsArray) : List.of();
-
-              return new Capacity(id, name, description, techIds);
-          })
-          .all()
-          .collectList();
+        Mono<List<Capacity>> dataMono = capacityRepository
+          .findCapacitiesPaginatedCustom(size, offset, dbSortColumn, dbSortDirection)
+          .map(projections -> projections.stream()
+            .map(p -> new Capacity(p.id(), p.name(), p.description(), p.techIds()))
+            .toList()
+          );
 
         return Mono.zip(dataMono, totalElementsMono)
           .map(tuple -> {

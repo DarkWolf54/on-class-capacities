@@ -18,7 +18,7 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.xml
 
   webflux:
-    base-path: /on-class
+    base-path: /on-class-capacities
 
 microservices:
   technology:

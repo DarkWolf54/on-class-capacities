@@ -5,7 +5,7 @@ import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Mono;
 
-public interface ICapacityRepository extends ReactiveCrudRepository<CapacityEntity, Long> {
+public interface ICapacityRepository extends ReactiveCrudRepository<CapacityEntity, Long>, ICapacityCustomRepository {
     @Query("SELECT COUNT(id) FROM capacity")
     Mono<Long> countAllCapacities();
 }

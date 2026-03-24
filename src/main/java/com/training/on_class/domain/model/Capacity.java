@@ -5,6 +5,8 @@ import java.util.List;
 
 public class Capacity {
 
+    public static final int MIN_REQUIRED_TECHS = 3;
+    public static final int MAX_REQUIRED_TECHS = 20;
     private final Long id;
     private final String name;
     private final String description;
@@ -42,11 +44,11 @@ public class Capacity {
             throw new BusinessException("La capacidad debe tener tecnologías asociadas.");
         }
 
-        if (techIds.size() < 3) {
+        if (techIds.size() < MIN_REQUIRED_TECHS) {
             throw new BusinessException("Una capacidad debe tener al menos 3 tecnologías.");
         }
 
-        if (techIds.size() > 20) {
+        if (techIds.size() > MAX_REQUIRED_TECHS) {
             throw new BusinessException("Una capacidad no puede tener más de 20 tecnologías.");
         }
 
